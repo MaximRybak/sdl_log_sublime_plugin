@@ -2,7 +2,9 @@ import sublime
 import sublime_plugin
 import json
 import re
+from os import walk
 from os import path
+import fnmatch
 import shutil
 import yaml
 
@@ -131,7 +133,7 @@ def hide_show_region(self, pattern):
         self.view.unfold(trc_regions)
 
 
-def open_file(self, path_to_file, message_if_absent):
+def open_file_with_check_exist(self, path_to_file, message_if_absent):
     """
     Open file. Show message if file not found
 
@@ -223,25 +225,61 @@ class JumpToFileCommand(sublime_plugin.TextCommand):
                 there is value in 'source_path' attribute in settings file
                 there isn't value in 'source_path' attribute in settings file
         """
-        FULL_PATH_FILE = "(/.*)(/sdl_core/src/.{0,}\\.(cc|h|cpp|hpp)):(\\d{1,})"
-        CORRECTED_PATH = "(/[^/ ]*)+/?"
-        primaryPath = re.search(FULL_PATH_FILE, self.view.substr(
+
+        def open_file(self, filePath):
+            """
+                The function hides the function call to jump to file and to the desired line.
+            """
+            self.view.window().open_file(filePath, sublime.ENCODED_POSITION)
+
+        SDL_LOG_SOURCE = "/sdl_core/src/"
+
+        FILE_NAME_WITHOUT_PATH_NAME = "(.+)(/|(] +))(.{0,}\\.(cc|h|cpp|hpp)):(\\d{1,})"
+        FULL_PATH_FILE = "(/.*)(/sdl_core/src/.{0,}\\.(c|cc|h|cpp|hpp)):(\\d{1,})"
+
+        # Check exist file in directory
+        # file in directory have
+        primaryPath_exist = re.search(
+            FULL_PATH_FILE, self.view.substr(self.view.line(self.view.sel()[0])))
+        # file in directory haven't
+        path_not_exist = re.search(FILE_NAME_WITHOUT_PATH_NAME, self.view.substr(
             self.view.line(self.view.sel()[0])))
-        isItPath = re.search(CORRECTED_PATH, self.view.substr(
-            self.view.line(self.view.sel()[0])))
-        if primaryPath:
-            if self.view.settings().get(SettingsTags.SOURCE_PATH):
-                file = self.view.settings().get(
-                    SettingsTags.SOURCE_PATH) + primaryPath.group(2)
-                open_file(self,
-                          file, "File '{0}' not found. Maybe path to source files in your settings is incorrect or file really absent".format(file))
+
+        if primaryPath_exist:
+            if primaryPath_exist:
+                file = primaryPath_exist.group(
+                    1) + primaryPath_exist.group(2)
+
+                if path.isfile(file):
+                    open_file(self, file + ":" + primaryPath_exist.group(4))
+                else:
+                    file = self.view.settings().get(SettingsTags.SOURCE_PATH) + \
+                        primaryPath_exist.group(2)
+
+                    open_file_with_check_exist(file + ":" +
+                                               primaryPath_exist.group(4),
+                                               "File '{0}' not found. Maybe path to source files in your settings is"
+                                               "incorrect or file really absent".format(file))
             else:
-                file = primaryPath.group(1) + primaryPath.group(2)
-                open_file(self,
-                          file, "File '{0}' not found. You can write path to source files in settings and try again. Or file really absent".format(file))
-        elif isItPath:
-            sublime.error_message(
-                "Expected '/sdl_core/src/' in '{0}' ".format(isItPath.group(0)))
+                sublime.error_message("Name file is not correct")
+        else:
+            # Check option sourcePath empty or not
+            if self.view.settings().get(SettingsTags.SOURCE_PATH):
+                flagFind = False
+
+                for root, dirnames, filenames in walk(self.view.settings().get(SettingsTags.SOURCE_PATH) + SDL_LOG_SOURCE):
+                    for filename in fnmatch.filter(filenames, path_not_exist.group(4)):
+                        if filename:
+                            flagFind = True
+                            open_file(self, root + '/' + filename +
+                                      ":" + path_not_exist.group(5))
+                            break
+                if not flagFind:
+                    sublime.error_message("File '{0}' not found. Maybe path to source files in your settings is "
+                                          "incorrect or file really absent".format(path_not_exist.group(4)))
+            else:
+                sublime.error_message("File '{0}' not found. Maybe path to source files in your settings is "
+                                      "incorrect or file really absent".format(path_not_exist.group(4)))
 
 
 class FunctionTreeCommand(sublime_plugin.TextCommand):
