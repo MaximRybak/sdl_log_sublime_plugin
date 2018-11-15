@@ -225,6 +225,9 @@ class LogSyntax:
         THREAD_ENTER  = "thread_enter"
         THREAD_EXIT   = "thread_exit"
         THREAD        = "thread"
+        MSG_STRING    = "msg_string"
+        BORDER_STRING = "border_string"
+        APP_MARK      = "app_mark"
         KEY_VALUE_COMMAND = "key_value_command"
         KEY_MAP = "key_map"
 
@@ -237,8 +240,10 @@ class LogSyntax:
         self.message = ""
         self.junk = ""
         self.thread_enter = ""
-        self.thread_exit  = ""
-        self.thread       = ""
+        self.thread_exit = ""
+        self.msg_string    = ""
+        self.border_string = ""
+        self.app_mark      = ""
         self.key_value_command = ""
         self.key_map = ""
 
@@ -270,6 +275,9 @@ class LogSyntax:
             self.junk = regex[self.Tags.JUNK]
             self.thread_enter = regex[self.Tags.THREAD_ENTER]
             self.thread_exit = regex[self.Tags.THREAD_EXIT]
+            self.msg_string = regex[self.Tags.MSG_STRING]
+            self.border_string = regex[self.Tags.BORDER_STRING]
+            self.app_mark = regex[self.Tags.APP_MARK]
             self.thread = regex[self.Tags.THREAD]
             self.key_value_command = regex[self.Tags.KEY_VALUE_COMMAND]
             self.key_map = regex[self.Tags.KEY_MAP]
@@ -503,6 +511,44 @@ class FunctionTreeCommand(sublime_plugin.TextCommand):
                 elif trc_string.find(syntax.thread_exit) != -1:
                     deep_counter-=1  
                 region = view.find(sel_text_regex, pos)
+
+
+class IgnCycleListener(sublime_plugin.ViewEventListener):
+    """
+        On log file loaded:
+        Creates separator in text for every ignition cycle 
+    """
+    def on_load(self):
+        file_name = self.view.file_name()
+        if (file_name.find(".log")!= -1):
+            pos = 0
+            app_region=self.view.find(syntax.app_mark, pos)
+            while app_region != sublime.Region(-1,-1):
+                full_line = self.view.full_line(app_region)
+                if full_line.begin() == 0:
+                    full_line.b = full_line.a
+                else:
+                    full_line.a-=1
+                    full_line.b = full_line.a
+                    full_line = self.view.full_line(full_line)
+                border_line = full_line
+                full_line = self.view.substr(full_line)
+                if full_line.find("===") == -1:
+                    self.view.run_command("text_insert", {'end_pos': border_line.end()})
+                pos = self.view.find(syntax.app_mark, pos)
+                pos = pos.end()
+                app_region=self.view.find(syntax.app_mark, pos)
+
+
+class TextInsertCommand(sublime_plugin.TextCommand):
+    """
+        Inserts text in current file
+    """
+    def run(self, edit, end_pos):
+        """
+        end_pos: position for insert
+        """
+        self.view.insert(edit, end_pos, syntax.border_string+"\n"+syntax.msg_string+"\n"+syntax.border_string+"\n")
 
 
 syntax = LogSyntax()
