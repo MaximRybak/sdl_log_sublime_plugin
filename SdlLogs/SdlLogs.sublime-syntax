@@ -16,6 +16,8 @@ variables:
   junk:          ' /(.*)/sdl_core/src/'
   thread_enter:  ' Enter'
   thread_exit:   ' Exit'
+  file_name_without_path_name: '(.+)(/|(] +))(.{0,}\.(c|cc|h|cpp|hpp)):(\d{1,})'
+  full_path_file: '(/.*)(/sdl_core/src/.{0,}\.(c|cc|h|cpp|hpp)):(\d{1,})'
   app_mark:      'Application started!'
   border_string: '=================================================================================================================================================='
   msg_string:    '=                                                         NEW IGNITION CYCLE                                                                     ='

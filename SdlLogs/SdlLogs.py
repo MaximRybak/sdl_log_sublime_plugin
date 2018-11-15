@@ -230,6 +230,8 @@ class LogSyntax:
         JUNK = "junk"
         THREAD_ENTER = "thread_enter"
         THREAD_EXIT = "thread_exit"
+        FILE_NAME_WITHOUT_PATH_NAME = "file_name_without_path_name"
+        FULL_PATH_FILE = "full_path_file"
         THREAD = "thread"
         MSG_STRING = "msg_string"
         BORDER_STRING = "border_string"
@@ -247,6 +249,8 @@ class LogSyntax:
         self.junk = ""
         self.thread_enter = ""
         self.thread_exit = ""
+        self.file_name_without_path_name = ""
+        self.full_path_file = ""
         self.msg_string = ""
         self.border_string = ""
         self.app_mark = ""
@@ -281,6 +285,8 @@ class LogSyntax:
             self.junk = regex[self.Tags.JUNK]
             self.thread_enter = regex[self.Tags.THREAD_ENTER]
             self.thread_exit = regex[self.Tags.THREAD_EXIT]
+            self.file_name_without_path_name = regex[self.Tags.FILE_NAME_WITHOUT_PATH_NAME]
+            self.full_path_file = regex[self.Tags.FULL_PATH_FILE]
             self.msg_string = regex[self.Tags.MSG_STRING]
             self.border_string = regex[self.Tags.BORDER_STRING]
             self.app_mark = regex[self.Tags.APP_MARK]
@@ -438,15 +444,13 @@ class JumpToFileCommand(sublime_plugin.TextCommand):
 
         SDL_LOG_SOURCE = "/sdl_core/src/"
 
-        FILE_NAME_WITHOUT_PATH_NAME = "(.+)(/|(] +))(.{0,}\\.(c|cc|h|cpp|hpp)):(\\d{1,})"
-        FULL_PATH_FILE = "(/.*)(/sdl_core/src/.{0,}\\.(c|cc|h|cpp|hpp)):(\\d{1,})"
-
         # Check exist file in directory
         # file in directory have
         primaryPath_exist = re.search(
-            FULL_PATH_FILE, self.view.substr(self.view.line(self.view.sel()[0])))
+            syntax.full_path_file, self.view.substr(
+                self.view.line(self.view.sel()[0])))
         # file in directory haven't
-        path_not_exist = re.search(FILE_NAME_WITHOUT_PATH_NAME, self.view.substr(
+        path_not_exist = re.search(syntax.file_name_without_path_name, self.view.substr(
             self.view.line(self.view.sel()[0])))
 
         if primaryPath_exist:
@@ -477,7 +481,7 @@ class JumpToFileCommand(sublime_plugin.TextCommand):
                         if filename:
                             flagFind = True
                             path_to_file = root + '/' + filename
-                            line = path_not_exist.group(5)
+                            line = path_not_exist.group(6)
 
                             open_file(self, path_to_file, line,
                                       ERROR_MESSAGE.format(path_to_file))
